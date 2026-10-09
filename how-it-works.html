@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How It Works</title>
+<meta name="author" content="Dr. Udayakumar Mani, Dr. Senthilkumar Rathnasamy">
+<meta name="theme-color" content="#1f6f43">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1>How the analyzer works</h1>
+      <p class="byline">Phi/Psi Ensemble Analyzer &middot; Developed by <b>Dr. Udayakumar Mani</b> &amp; <b>Dr. Senthilkumar Rathnasamy</b></p>
+    </div>
+    <nav><a href="index.html" class="navlink">&larr; Back to the tool</a></nav>
+  </div>
+</header>
+
+<main class="wrap doc">
+<div class="card">
+
+<h2>1. The question it answers</h2>
+<p>Proteins are not rigid. Some regions hold one shape; others move. When several structures of the same protein exist
+(the 10&ndash;30 models of an NMR entry, or several crystal structures), comparing them shows which parts move.
+This tool measures that, residue by residue, and compares it with how confident AlphaFold is about each residue.</p>
+
+<h2>2. Backbone torsion angles &phi; and &psi;</h2>
+<p>The shape of a protein backbone is set mainly by two rotatable bonds per residue:</p>
+<ul>
+  <li><b>&phi; (phi)</b>: rotation about the N&ndash;C&alpha; bond, defined by atoms C(<i>i</i>&minus;1), N, C&alpha;, C.</li>
+  <li><b>&psi; (psi)</b>: rotation about the C&alpha;&ndash;C bond, defined by atoms N, C&alpha;, C, N(<i>i</i>+1).</li>
+</ul>
+<p>Each angle is a <b>dihedral</b>: the angle between the plane of the first three atoms and the plane of the last three.
+With bond vectors <b>b</b><sub>1</sub>, <b>b</b><sub>2</sub>, <b>b</b><sub>3</sub> and plane normals
+<b>n</b><sub>1</sub> = <b>b</b><sub>1</sub> &times; <b>b</b><sub>2</sub>, <b>n</b><sub>2</sub> = <b>b</b><sub>2</sub> &times; <b>b</b><sub>3</sub>:</p>
+<p class="formula">angle = atan2( |<b>b</b><sub>2</sub>| &middot; (<b>b</b><sub>1</sub> &middot; <b>n</b><sub>2</sub>),&nbsp; <b>n</b><sub>1</sub> &middot; <b>n</b><sub>2</sub> )</p>
+<p>This gives a signed angle from &minus;180&deg; to +180&deg; (IUPAC convention). A helix has &phi; &asymp; &minus;60&deg;, &psi; &asymp; &minus;40&deg;;
+a &beta;-strand has &phi; &asymp; &minus;120&deg;, &psi; &asymp; +130&deg;. If the C&ndash;N distance between neighbouring residues is above 2&nbsp;&Aring;,
+the chain is broken there and that angle is left blank.</p>
+
+<h2>3. Step by step</h2>
+<ol>
+  <li><b>Load structures.</b> PDB files are downloaded from the RCSB Protein Data Bank, or read from a file you upload.
+      Every MODEL in the file is kept. Only backbone atoms (N, C&alpha;, C) are used; for alternate locations, the first (&ldquo;A&rdquo;) is used.</li>
+  <li><b>Compute angles.</b> &phi; and &psi; are calculated for every residue in every model.</li>
+  <li><b>Measure the spread with circular statistics.</b> Angles wrap around: &minus;179&deg; and +179&deg; are only 2&deg; apart.
+      An ordinary average of those two would give 0&deg;, which is wrong. So each angle is turned into a point on a circle
+      (cos &theta;, sin &theta;) and the points are averaged:
+      <p class="formula">mean = atan2( &Sigma; sin &theta;<sub>i</sub>, &Sigma; cos &theta;<sub>i</sub> ) &nbsp;&nbsp;&nbsp;
+         R = | average of (cos &theta;<sub>i</sub>, sin &theta;<sub>i</sub>) | &nbsp;&nbsp;&nbsp;
+         circular SD = &radic;( &minus;2 ln R )</p>
+      R is 1 when all models agree and falls towards 0 when the angles scatter.</li>
+  <li><b>Flexibility score.</b> For each residue, flexibility = average of the circular SD of &phi; and of &psi;, in degrees.
+      Near 0&deg; means rigid; 60&deg; or more is shown as fully flexible (red).</li>
+  <li><b>Two-state check.</b> Sometimes a residue switches between two distinct shapes (for example a peptide flip),
+      instead of wobbling around one. The tool splits that residue&rsquo;s (&phi;, &psi;) points into two groups (2-means clustering on the circle).
+      It marks the residue &ldquo;2-state&rdquo; when each group holds at least 15% of the models, the two group centres are at least 60&deg; apart,
+      and each group is tight compared with that distance. For such residues the single mean and SD are misleading, so both centres are drawn
+      on the Ramachandran plot.</li>
+  <li><b>AlphaFold comparison (optional).</b> AlphaFold stores its per-residue confidence, <b>pLDDT</b> (0&ndash;100), in its model file.
+      The tool reads it and pairs it with each residue (UniProt position = PDB residue number + offset).</li>
+  <li><b>Correlation.</b> Spearman&rsquo;s rank correlation &rho; is computed between flexibility and pLDDT. A negative &rho; means
+      flexible residues tend to have lower AlphaFold confidence. The p-value comes from 5000 random shuffles (permutation test).
+      It is <i>approximate</i>, because neighbouring residues move together and are not independent.</li>
+</ol>
+
+<h2>4. Reading the results</h2>
+<ul>
+  <li><b>Flexibility profile:</b> one bar per residue, coloured blue (rigid) to red (flexible). The black line is AlphaFold pLDDT.
+      An orange dot marks a two-state residue.</li>
+  <li><b>3D view:</b> the structure coloured the same way. All models are overlaid; tick &ldquo;first model only&rdquo; for a single one.</li>
+  <li><b>Ramachandran plot:</b> grey points are every residue in every model. Tap a residue to see its points from each model in colour,
+      with &#10010; at the circular mean (or two orange &#10010; for a two-state residue).</li>
+  <li><b>Scatter plot:</b> flexibility against pLDDT, one dot per residue.</li>
+  <li><b>Table and CSV:</b> all numbers per residue, and every angle of every model, for use in Excel, R or Python.</li>
+</ul>
+
+<h2>5. Good inputs to try</h2>
+<ul>
+  <li><b>1D3Z</b>, chain A, UniProt P62987, offset 0: ubiquitin, 10 NMR models. Rigid core, flexible C-terminal tail.</li>
+  <li><b>2K39</b>, chain A, UniProt P62987, offset 0: ubiquitin, 116 models including slower motions. Look at Asp52.</li>
+  <li><b>1DMO</b>, chain A, UniProt P0DP33, offset 1: calcium-free calmodulin, 30 NMR models. Flexible central linker.</li>
+  <li><b>1UBQ, 1UBI</b>, chain A: two ubiquitin crystal structures compared with each other.</li>
+</ul>
+
+<h2>6. Limitations</h2>
+<ul>
+  <li>The spread of an NMR ensemble reflects both real motion and how tightly the experimental data constrained the calculation.
+      Treat it as &ldquo;well defined vs poorly defined&rdquo;, not as a direct measurement of motion.</li>
+  <li>Terminal residues have only one of the two angles, so their score uses that angle alone.</li>
+  <li>With multiple PDB entries, residues are matched by chain and residue number, so all entries must use the same numbering.</li>
+  <li>Only PDB-format files are read. Very large entries that exist only as mmCIF must be converted first.</li>
+  <li>pLDDT measures AlphaFold&rsquo;s confidence, not motion directly. It tracks disorder well but can miss switching between two ordered states.</li>
+</ul>
+
+<h2>7. Privacy and validation</h2>
+<p>All calculations run on your own device; uploaded files are never sent anywhere. The angle calculation was checked against a synthetic
+ensemble built from known angles (largest error 0.13&deg;, from rounding), and a script is included to compare results with Biopython.</p>
+
+<h2>8. Credits</h2>
+<p>Developed by <b>Dr. Udayakumar Mani</b> and <b>Dr. Senthilkumar Rathnasamy</b>.<br>
+Data: RCSB Protein Data Bank; AlphaFold Protein Structure Database (EMBL-EBI / Google DeepMind). 3D viewer: 3Dmol.js (BSD licence).</p>
+
+</div>
+</main>
+<footer class="wrap foot"><p><a href="index.html">&larr; Back to the tool</a></p></footer>
+</body>
+</html>

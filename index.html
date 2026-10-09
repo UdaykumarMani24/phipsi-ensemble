@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phi/Psi Ensemble Analyzer</title>
+<meta name="description" content="Per-residue backbone flexibility from NMR ensembles and multiple crystal structures, compared with AlphaFold pLDDT.">
+<meta name="author" content="Dr. Udayakumar Mani, Dr. Senthilkumar Rathnasamy">
+<meta name="theme-color" content="#1f6f43">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1>Phi / Psi Ensemble Analyzer</h1>
+      <p class="byline">Developed by <b>Dr. Udayakumar Mani</b> &amp; <b>Dr. Senthilkumar Rathnasamy</b></p>
+    </div>
+    <nav>
+      <a href="how-it-works.html" class="navlink">How it works</a>
+      <button id="installBtn" class="btn small" hidden>Install app</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <form id="form" class="card" autocomplete="off">
+    <div id="messages"></div>
+
+    <div class="grid2">
+      <label class="field">PDB ID(s), comma-separated
+        <input type="text" id="pdbid" placeholder="1D3Z   or   1UBQ, 1UBI" inputmode="text" autocapitalize="characters">
+      </label>
+      <label class="field">or upload a PDB file (NMR ensemble or any file)
+        <input type="file" id="pdbfile" accept=".pdb,.ent,.txt">
+      </label>
+      <label class="field narrow">Chain (optional)
+        <input type="text" id="chain" maxlength="1" placeholder="A" autocapitalize="characters">
+      </label>
+    </div>
+
+    <details class="af">
+      <summary>AlphaFold comparison (optional)</summary>
+      <div class="grid2">
+        <label class="field">UniProt accession
+          <input type="text" id="uniprot" placeholder="e.g. P62987" autocapitalize="characters">
+        </label>
+        <label class="field narrow">Residue offset
+          <input type="number" id="offset" value="0" step="1">
+        </label>
+        <label class="field">or upload the AlphaFold PDB file
+          <input type="file" id="affile" accept=".pdb,.ent,.txt">
+        </label>
+      </div>
+      <p class="hint">UniProt position = PDB residue number + offset. Use the file upload if the online lookup fails.</p>
+    </details>
+
+    <div class="actions">
+      <button class="btn" type="submit" id="runBtn">Analyze</button>
+      <button class="btn ghost" type="button" id="exampleBtn">Try example (ubiquitin 1D3Z)</button>
+    </div>
+    <p class="hint">
+      <b>One NMR entry</b>: all its models form the ensemble.
+      <b>Several IDs</b> of the same protein: each entry (and each of its models) is one ensemble member; set the chain so numbering lines up. Max 30 IDs.
+    </p>
+  </form>
+
+  <section id="results" hidden>
+    <div class="card">
+      <div id="info" class="info"></div>
+      <div id="summary" class="muted"></div>
+      <div class="legend-row">
+        <small>Flexibility profile: mean circular SD of &phi;/&psi; per residue (tap a bar)</small>
+        <span><span class="legend"></span> <small>rigid &rarr; flexible (&ge; 60&deg;)</small>
+          <small id="plLegend" hidden>&nbsp;&nbsp;<b>&mdash;</b> AlphaFold pLDDT (right axis)&nbsp;&nbsp;<span style="color:#e8590c">&#9679;</span> 2-state</small></span>
+      </div>
+      <canvas id="profile" width="1000" height="240"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-head"><small id="viewerTitle">3D structure coloured by flexibility</small>
+            <label class="chk"><input type="checkbox" id="firstOnly"> first model only</label></div>
+          <div id="viewer"></div>
+          <small id="viewerNote" class="muted"></small>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><small>Ramachandran: grey = all residues and models; colour = selected residue; &#10010; = circular mean</small></div>
+          <canvas id="rama" width="400" height="400"></canvas>
+        </div>
+        <div class="panel" id="scWrap" hidden>
+          <div class="panel-head"><small>Flexibility vs AlphaFold pLDDT (one dot per residue)</small></div>
+          <canvas id="scatter" width="400" height="400"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="actions">
+        <button class="btn ghost" type="button" id="sortBtn">Sort by flexibility</button>
+        <button class="btn ghost" type="button" id="csv1">Summary CSV</button>
+        <button class="btn ghost" type="button" id="csv2">Per-model torsions CSV</button>
+      </div>
+      <div class="tablewrap">
+        <table id="tbl">
+          <thead><tr>
+            <th>Chain</th><th>Residue</th><th>n</th>
+            <th>&phi; mean</th><th>&phi; SD</th><th>&psi; mean</th><th>&psi; SD</th>
+            <th>Flex (&deg;)</th><th>pLDDT</th><th>States</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint">&ldquo;2-state&rdquo; marks residues whose &phi;/&psi; points split into two separate clusters (for example a peptide flip). For those, the mean and SD are misleading; look at the Ramachandran plot instead.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Phi/Psi Ensemble Analyzer &middot; Developed by Dr. Udayakumar Mani &amp; Dr. Senthilkumar Rathnasamy &middot;
+     <a href="how-it-works.html">How it works</a></p>
+  <p class="muted">Structures from the RCSB Protein Data Bank; predictions from the AlphaFold Protein Structure Database; 3D view by 3Dmol.js. All calculations run on your device.</p>
+</footer>
+
+<script src="vendor/3Dmol-min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

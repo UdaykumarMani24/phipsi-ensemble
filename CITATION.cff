@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Phi/Psi Ensemble Analyzer"
+abstract: "Per-residue backbone flexibility from NMR ensembles and multiple crystal structures using circular statistics, with two-state residue detection and comparison to AlphaFold pLDDT."
+authors:
+  - family-names: "Mani"
+    given-names: "Udayakumar"
+  - family-names: "Rathnasamy"
+    given-names: "Senthilkumar"
+version: "1.0.0"
+date-released: "2026-10-09"
+license: MIT
+keywords:
+  - protein flexibility
+  - NMR ensemble
+  - Ramachandran
+  - circular statistics
+  - AlphaFold
+  - pLDDT
